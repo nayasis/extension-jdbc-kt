@@ -3,16 +3,15 @@ package com.github.nayasis.kotlin.jdbc.query
 class QueryBase(sql: String) {
 
     val queries = ArrayList<String>()
-
-    private val paramStructs = ArrayList<BindStruct>()
-    private val paramStructsByKey: Map<String,BindStruct>
+    val paramStructs = ArrayList<BindStruct>()
+    val paramStructsByKey: Map<String,BindStruct>
 
     init {
         val query       = sql.trimIndent()
         val quotChecker = QuotChecker()
         val buffer      = StringBuilder()
         var i           = 0
-        while( i < query.length ) {
+        while(i < query.length) {
             val curr = sql[i]
             val next = sql.getOrNull(i + 1)
             if(quotChecker.read(curr, next).ignorable()) {
@@ -44,10 +43,6 @@ class QueryBase(sql: String) {
 
     fun getParamStruct(key: String?): BindStruct? {
         return paramStructsByKey[key]
-    }
-
-    fun getParamStruct(index: Int): BindStruct? {
-        return paramStructs.getOrNull(index)
     }
 
     override fun toString(): String {

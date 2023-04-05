@@ -51,7 +51,7 @@ class BindParam {
 
     constructor(value: Any?, struct: BindStruct) {
         this.value = value
-        this.out   = struct.out
+        this.out   = struct.out ?: false
         this.jdbcType = struct.jdbcType ?: value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR
     }
 

@@ -4,7 +4,8 @@ class Query(
     private val queryBase: QueryBase
 ) {
 
-    private val params = HashMap<String,Any?>()
+    // key : BindParam or List<BindParam>
+    val params = HashMap<String,Any>()
 
     constructor(sql: String) : this(QueryBase(sql))
 
@@ -31,28 +32,37 @@ class Query(
         val sb = StringBuilder()
         for(i in 0 until queryBase.queries.size) {
             sb.append(queryBase.queries[i])
-            queryBase.getParamStruct(i)?.let { struct ->
+            queryBase.paramStructs.getOrNull(i)?.let { struct ->
                 if(params.containsKey(struct.key)) {
                     val value = params[struct.key]
                     if(value is List<*>) {
                         value.joinToString(",") { "?" }
-
-                    } else {
-                        "?"
-                    }
-                } else {
-                    "$struct"
-                }
+                    } else "?"
+                } else "$struct"
             }
         }
         return sb.toString()
     }
 
+    fun toPreparedParams(): List<BindParam> {
+        val ans = ArrayList<BindParam>()
+        for( struct in queryBase.paramStructs ) {
+            params[struct.key]?.let { param ->
+                if(param is List<*>) {
+                    param.filterIsInstance<BindParam>().forEach { e -> ans.add(e) }
+                } else if( param is BindParam) {
+                    ans.add(param)
+                }
+            }
+        }
+        return ans
+    }
+
     override fun toString(): String {
         val sb = StringBuilder()
-        for(i in 0 until queryBase.queries.size) {
+        for(i in queryBase.queries.indices) {
             sb.append(queryBase.queries[i])
-            queryBase.getParamStruct(i)?.let { struct ->
+            queryBase.paramStructs.getOrNull(i)?.let { struct ->
                 if(params.containsKey(struct.key)) {
                     val value = params[struct.key]
                     if(value is List<*>) {
@@ -69,3 +79,5 @@ class Query(
     }
 
 }
+
+fun String.toQuery(): Query = Query(this)
