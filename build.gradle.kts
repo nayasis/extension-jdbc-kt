@@ -4,9 +4,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
 	java
 	`maven-publish`	
-	kotlin("jvm") version "1.8.10"
-	kotlin("plugin.allopen") version "1.8.10"
-	kotlin("plugin.noarg") version "1.8.10"
+	kotlin("jvm") version "1.8.20"
+	kotlin("plugin.allopen") version "1.8.20"
+	kotlin("plugin.noarg") version "1.8.20"
 }
 
 allOpen {
@@ -49,17 +49,20 @@ repositories {
 
 dependencies {
 
-	implementation("com.github.nayasis:basica-kt:0.2.19")
+//	implementation("com.github.nayasis:basica-kt:0.2.20")
+	implementation("com.github.nayasis:basica-kt:develop-SNAPSHOT"){ isChanging = true }
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
+	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta")
 	implementation("io.github.microutils:kotlin-logging:3.0.5")
 	implementation("au.com.console:kassava:2.1.0")
 	compileOnly("com.oracle.database.jdbc:ojdbc6:11.2.0.4")
 
-	testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.1")
-	testImplementation("org.junit.jupiter:junit-jupiter-engine:5.3.1")
-	testImplementation("ch.qos.logback:logback-classic:1.3.5")
+	testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+	testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+//	testImplementation("ch.qos.logback:logback-classic:1.3.5")
+	testImplementation("ch.qos.logback:logback-classic:1.4.6")
 
 }
 

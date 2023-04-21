@@ -1,5 +1,8 @@
 package com.github.nayasis.kotlin.jdbc.query
 
+import JdbcType
+import com.github.nayasis.kotlin.basica.reflection.Reflector
+
 class Query(
     private val queryBase: QueryBase
 ) {
@@ -7,10 +10,17 @@ class Query(
     // key : BindParam or List<BindParam>
     val params = HashMap<String,Any>()
 
+    val paramStructs: List<BindStruct>
+        get() = queryBase.paramStructs
+
     constructor(sql: String) : this(QueryBase(sql))
 
-    fun addParams(params: Map<String,Any?>) {
-        params.forEach { (key, value) -> addParam(key,value) }
+    fun addParam(vo: Any) {
+        addParam(Reflector.toMap(vo))
+    }
+
+    fun addParam(params: Map<String,Any?>) {
+        params?.forEach { (key, value) -> addParam(key,value) }
     }
 
     fun addParam(key: String, param: Any?) {
@@ -24,39 +34,39 @@ class Query(
         }
     }
 
-    fun reset() {
-        params.clear()
-    }
-
-    fun toPreparedString(): String {
-        val sb = StringBuilder()
-        for(i in 0 until queryBase.queries.size) {
-            sb.append(queryBase.queries[i])
-            queryBase.paramStructs.getOrNull(i)?.let { struct ->
-                if(params.containsKey(struct.key)) {
-                    val value = params[struct.key]
-                    if(value is List<*>) {
-                        value.joinToString(",") { "?" }
-                    } else "?"
-                } else "$struct"
+    val preparedQuery: String
+        get() {
+            val sb = StringBuilder()
+            for(i in 0 until queryBase.queries.size) {
+                sb.append(queryBase.queries[i])
+                queryBase.paramStructs.getOrNull(i)?.let { struct ->
+                    if(params.containsKey(struct.key)) {
+                        val value = params[struct.key]
+                        if (value is List<*>) {
+                            value.joinToString(",") { "?" }
+                        } else "?"
+                    } else if(struct.out) {
+                        "?"
+                    } else "$struct"
+                }?.let { sb.append(it) }
             }
+            return sb.toString()
         }
-        return sb.toString()
-    }
 
-    fun toPreparedParams(): List<BindParam> {
-        val ans = ArrayList<BindParam>()
-        for( struct in queryBase.paramStructs ) {
-            params[struct.key]?.let { param ->
-                if(param is List<*>) {
-                    param.filterIsInstance<BindParam>().forEach { e -> ans.add(e) }
-                } else if( param is BindParam) {
-                    ans.add(param)
+    val preparedParams: List<BindParam>
+        get() {
+            val ans = ArrayList<BindParam>()
+            for( struct in queryBase.paramStructs ) {
+                params[struct.key]?.let { param ->
+                    if(param is List<*>) {
+                        param.filterIsInstance<BindParam>().forEach { e -> ans.add(e) }
+                    } else if( param is BindParam) {
+                        ans.add(param)
+                    }
                 }
             }
+            return ans
         }
-        return ans
-    }
 
     override fun toString(): String {
         val sb = StringBuilder()
@@ -81,3 +91,4 @@ class Query(
 }
 
 fun String.toQuery(): Query = Query(this)
+

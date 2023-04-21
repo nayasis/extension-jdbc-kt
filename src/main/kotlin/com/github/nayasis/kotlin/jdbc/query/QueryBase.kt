@@ -4,7 +4,8 @@ class QueryBase(sql: String) {
 
     val queries = ArrayList<String>()
     val paramStructs = ArrayList<BindStruct>()
-    val paramStructsByKey: Map<String,BindStruct>
+
+    private val paramStructsByKey: Map<String,BindStruct>
 
     init {
         val query       = sql.trimIndent()
@@ -23,8 +24,10 @@ class QueryBase(sql: String) {
                     buffer.append(sql.substring(i))
                     break
                 } else {
-                    val definition = sql.substring(start + 1, end - 1)
+                    val definition = sql.substring(start + 1, end)
                     paramStructs.add(BindStruct(definition))
+                    queries.add("$buffer")
+                    buffer.clear()
                     i = end
                 }
             } else {

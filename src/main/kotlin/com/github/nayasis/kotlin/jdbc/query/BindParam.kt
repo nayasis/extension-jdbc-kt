@@ -15,6 +15,8 @@ import java.util.Date
 
 class BindParam {
 
+    var key: String
+        private set
     var value: Any? = null
     var out: Boolean = false
     var jdbcType: JdbcType = JdbcType.VARCHAR
@@ -43,13 +45,8 @@ class BindParam {
             }
         }
 
-    constructor(value: Any?, jdbcType: JdbcType = value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR, out: Boolean = false) {
-        this.value    = value
-        this.jdbcType = jdbcType
-        this.out      = out
-    }
-
     constructor(value: Any?, struct: BindStruct) {
+        this.key = struct.key
         this.value = value
         this.out   = struct.out ?: false
         this.jdbcType = struct.jdbcType ?: value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR

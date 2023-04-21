@@ -5,7 +5,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 
-interface TypeMapper<T> {
+interface TypeMapper<T: Any?> {
 
     @Throws(SQLException::class)
     fun setParameter(statement: PreparedStatement, index: Int, param: T)
