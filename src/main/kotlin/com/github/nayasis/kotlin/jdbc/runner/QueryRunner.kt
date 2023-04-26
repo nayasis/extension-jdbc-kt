@@ -24,7 +24,7 @@ class QueryRunner(
     override val coroutineContext: CoroutineContext = Dispatchers.IO,
 ): CoroutineScope  {
 
-    fun update(): Deferred<Long> {
+    suspend fun update(): Long {
         logger.trace { query }
         connection.prepareStatement(query.preparedQuery).use { statement ->
             setParameter(statement, query.preparedParams)
@@ -33,12 +33,17 @@ class QueryRunner(
         return connection.prepareStatement(query.preparedQuery).use { statement ->
             setParameter(statement, query.preparedParams)
             async {
-                statement.executeLargeUpdate()
-            }
+                try {
+                    statement.executeLargeUpdate()
+                } catch (e: Exception) {
+                    logger.error { "Binding Parameters\n  - ${query.preparedParams.map { it.value }}" }
+                    throw e
+                }
+            }.await()
         }
     }
 
-    fun call(): Deferred<CallResult> {
+    suspend fun call(): CallResult {
         logger.trace { query }
         connection.prepareCall(query.preparedQuery).use { statement ->
             val outParams = setParameter(statement, query.preparedParams)
@@ -56,7 +61,7 @@ class QueryRunner(
                     }
                 }
                 CallResult(ans,rtns)
-            }
+            }.await()
         }
     }
 
@@ -66,7 +71,7 @@ class QueryRunner(
      * @param fetchSize Int?    row fetch size
      * @param lobFetchSize Int? LOB data prefetch size (works on ORACLE only)
      */
-    fun retrieve(fetchSize: Int? = null, lobFetchSize: Int? = null): Deferred<ResultSet> {
+    suspend fun retrieve(fetchSize: Int? = null, lobFetchSize: Int? = null, maxRows: Int? = null): ResultSet {
         logger.trace { query }
         connection.prepareStatement(query.preparedQuery).use { statement ->
             fetchSize?.let { statement.fetchSize = it }
@@ -79,49 +84,44 @@ class QueryRunner(
                     }
                 }
             }
+            maxRows?.let { statement.maxRows = it }
             setParameter(statement, query.preparedParams)
             return async {
-                statement.executeQuery().use { rset -> rset.use { rset } }
-            }
+                statement.executeQuery()
+            }.await()
         }
     }
 
-    fun get(): Deferred<Map<String,Any?>> {
-        return async {
-            retrieve(null, null).await().let { get(it) }
+    suspend fun get(): Map<String, Any?> {
+        return retrieve(null, null).let { get(it) }
+    }
+
+    suspend inline fun <reified T> getAs(): T {
+        return get().toObject()
+    }
+
+    suspend inline fun <reified T> getValue(): T? {
+        return retrieve(null, null).let { monoFirst(it) as T? }
+    }
+
+    suspend fun getAll(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<Map<String,Any?>> {
+        return retrieve(fetchSize, lobFetchSize).let {
+            getAll(it)
         }
     }
 
-    inline fun <reified T> getAs(): Deferred<T> {
-        return async { get().await().toObject() }
-    }
-
-    inline fun <reified T> getValue(): Deferred<T?> {
-        return async {
-            retrieve(null, null).await().let { monoFirst(it) as T? }
-        }
-    }
-
-    fun getAll(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<Map<String,Any?>> {
-        return flow {
-            retrieve(fetchSize, lobFetchSize).await().let { getAll(it) }
-        }
-    }
-
-    inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
+    suspend inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
         return getAll(fetchSize, lobFetchSize).map { it.toObject() }
     }
 
-    inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
-        return flow {
-            retrieve(fetchSize, lobFetchSize).await().let { fluxFirst(it) }
-        }
+    suspend inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
+        return retrieve(fetchSize, lobFetchSize).let { fluxFirst(it) }
     }
 
-    fun getAllToNGrid(fetchSize: Int? = null, lobFetchSize: Int? = null): Deferred<NGrid> {
+    suspend fun getAllToNGrid(fetchSize: Int? = null, lobFetchSize: Int? = null): NGrid {
         return async {
             val grid = NGrid()
-            retrieve(fetchSize, lobFetchSize).await().let { rset ->
+            retrieve(fetchSize, lobFetchSize).let { rset ->
                 val header = Header(rset)
                 grid.header.addAll(header.keys)
                 getAll(rset).collect {
@@ -129,7 +129,7 @@ class QueryRunner(
                 }
             }
             grid
-        }
+        }.await()
     }
 
 }

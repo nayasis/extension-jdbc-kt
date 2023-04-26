@@ -1,6 +1,6 @@
 package com.github.nayasis.kotlin.jdbc.query
 
-import JdbcType
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 
 class BindStruct {
 

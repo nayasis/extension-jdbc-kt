@@ -1,7 +1,5 @@
 package com.github.nayasis.kotlin.jdbc.query
 
-import JdbcType
-
 class QuotChecker {
 
     private var inQuot         = false

@@ -6,7 +6,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLXML
 
-class SqlXmlMapper: TypeMapper<String> {
+object SqlXmlMapper: TypeMapper<String> {
     override fun setParameter(statement: PreparedStatement, index: Int, param: String) {
         val sqlxml = statement.connection.createSQLXML()
         try {
@@ -16,28 +16,10 @@ class SqlXmlMapper: TypeMapper<String> {
             sqlxml.free()
         }
     }
-
-    override fun setOutParameter(statement: CallableStatement, index: Int) {
-        statement.registerOutParameter(index, JdbcType.SQLXML.code)
-    }
-
-    override fun getResult(resultSet: ResultSet, columnName: String): String? {
-        return resultSet.getSQLXML(columnName)?.let { toString(it) }
-    }
-
-    override fun getResult(resultSet: ResultSet, columnIndex: Int): String? {
-        return resultSet.getSQLXML(columnIndex)?.let { toString(it) }
-    }
-
-    override fun getResult(statement: CallableStatement, columnIndex: Int): String? {
-        return statement.getSQLXML(columnIndex)?.let { toString(it) }
-    }
-
-    private fun toString(sqlxml: SQLXML?): String? {
-        try {
-            return sqlxml?.string
-        } finally {
-            sqlxml?.free()
-        }
-    }
+    override fun getResult(resultSet: ResultSet, columnIndex: Int): String? =
+        resultSet.getSQLXML(columnIndex)?.let { toString(it) }
+    override fun getResult(statement: CallableStatement, columnIndex: Int): String? =
+        statement.getSQLXML(columnIndex)?.let { toString(it) }
+    private fun toString(sqlxml: SQLXML?): String? =
+        try { sqlxml?.string } finally { sqlxml?.free() }
 }

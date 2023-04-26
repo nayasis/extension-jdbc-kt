@@ -1,6 +1,6 @@
 package com.github.nayasis.kotlin.jdbc.query
 
-import JdbcType
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.basica.reflection.Reflector
 
 class Query(
@@ -15,15 +15,16 @@ class Query(
 
     constructor(sql: String) : this(QueryBase(sql))
 
-    fun addParam(vo: Any) {
-        addParam(Reflector.toMap(vo))
+    fun addParam(vo: Any): Query {
+        return addParam(Reflector.toMap(vo))
     }
 
-    fun addParam(params: Map<String,Any?>) {
-        params?.forEach { (key, value) -> addParam(key,value) }
+    fun addParam(params: Map<String,Any?>): Query {
+        params.forEach { (key, value) -> addParam(key,value) }
+        return this
     }
 
-    fun addParam(key: String, param: Any?) {
+    fun addParam(key: String, param: Any?): Query {
         val struct = queryBase.getParamStruct(key) ?: BindStruct(key)
         if(param is Array<*> && struct.jdbcType != JdbcType.ARRAY) {
             params[key] = param.map { BindParam(it,struct) }
@@ -32,6 +33,12 @@ class Query(
         } else {
             params[key] = BindParam(param,struct)
         }
+        return this
+    }
+
+    fun reset(): Query {
+        params.clear()
+        return this
     }
 
     val preparedQuery: String

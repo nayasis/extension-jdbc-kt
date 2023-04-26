@@ -1,7 +1,9 @@
 package com.github.nayasis.kotlin.jdbc.runner
 
 import com.github.nayasis.kotlin.jdbc.query.BindParam
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.jdbc.type.TypeMapper
+import com.github.nayasis.kotlin.jdbc.type.implement.NullMapper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toCollection
@@ -36,8 +38,8 @@ fun monoFirst(resultSet: ResultSet): Any? {
 }
 
 fun getAll(resultSet: ResultSet): Flow<Map<String,Any?>> {
+    val header = Header(resultSet)
     return flow { resultSet.use { rset ->
-        val header = Header(rset)
         while (rset.next()) {
             val row = LinkedHashMap<String,Any?>()
             for (i in 0 until header.size) {
@@ -48,11 +50,11 @@ fun getAll(resultSet: ResultSet): Flow<Map<String,Any?>> {
     }}
 }
 
-fun fluxFirst(resultSet: ResultSet): Flow<Any?> {
+fun <T> fluxFirst(resultSet: ResultSet): Flow<T?> {
     return flow { resultSet.use { rset ->
         val header = Header(rset)
         while (rset.next()) {
-            emit(convertResult(rset, 0, header))
+            emit(convertResult(rset, 0, header) as T?)
         }
     }}
 }
@@ -85,14 +87,13 @@ fun setParameter(statement: Statement, params: List<BindParam>): Map<Int,BindPar
         is CallableStatement -> {
             params.forEachIndexed { i, param ->
                 try {
-                    val mapper = param.jdbcType.mapper as TypeMapper<Any?>
                     if(param.out) {
                         if(outParams == null)
                             outParams = HashMap()
-                        mapper.setOutParameter(statement, i+1)
+                        statement.registerOutParameter(i+1, param.jdbcType.code)
                         outParams?.put(i+1, param)
                     } else {
-                        mapper.setParameter(statement, i+1, param.value)
+                        setParameter(statement, i, param)
                     }
                 } catch (e: Exception) {
                     throw SQLSyntaxErrorException("error on binding parameter (index:$i, parameter:[$param])")
@@ -101,15 +102,24 @@ fun setParameter(statement: Statement, params: List<BindParam>): Map<Int,BindPar
         }
         is PreparedStatement -> {
             params.forEachIndexed { i, param ->
-                try {
-                    val mapper = param.jdbcType.mapper as TypeMapper<Any?>
-                    mapper.setParameter(statement, i+1, param.value)
-                } catch (e: Exception) {
-                    throw SQLSyntaxErrorException("error on binding parameter (index:$i, parameter:[$param])")
-                }
+                setParameter(statement, i, param)
             }
         }
         else -> throw UnsupportedOperationException("Not supported statement. (${statement::class.simpleName})")
     }
     return outParams
+}
+
+private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam) {
+    if (param.value == null) {
+        NullMapper.setParameter(statement, i + 1, null as Nothing)
+    } else {
+        try {
+            val mapper = param.jdbcType.mapper as TypeMapper<Any>
+            mapper.setParameter(statement, i + 1, param.value!!)
+        } catch (e: Exception) {
+            val mapper = JdbcType.mapper(param.value!!::class) as TypeMapper<Any>
+            mapper.setParameter(statement, i + 1, param.value!!)
+        }
+    }
 }

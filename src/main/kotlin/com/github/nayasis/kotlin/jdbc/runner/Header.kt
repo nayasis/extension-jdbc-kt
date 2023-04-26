@@ -1,6 +1,6 @@
 package com.github.nayasis.kotlin.jdbc.runner
 
-import JdbcType
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.sql.SQLException
