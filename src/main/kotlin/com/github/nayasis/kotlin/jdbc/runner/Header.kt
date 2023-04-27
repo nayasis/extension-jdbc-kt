@@ -1,9 +1,12 @@
 package com.github.nayasis.kotlin.jdbc.runner
 
+import com.github.nayasis.kotlin.basica.core.string.toCamel
 import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.sql.SQLException
+
+var headerNameSetter: (columnName: String) -> String = { columnName -> columnName.toCamel() }
 
 class Header(resultSetMeta: ResultSetMetaData) {
 
@@ -21,9 +24,9 @@ class Header(resultSetMeta: ResultSetMetaData) {
 
     init {
         val dupKeys = ArrayList<String>()
-        for( i in 0..resultSetMeta.columnCount) {
+        for( i in 1..resultSetMeta.columnCount) {
             val header = HeaderMeta(
-                resultSetMeta.getColumnName(i),
+                headerNameSetter(resultSetMeta.getColumnName(i)),
                 JdbcType.of(resultSetMeta.getColumnType(i))
             )
             if(keyMap.containsKey(header.name))

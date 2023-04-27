@@ -32,8 +32,7 @@ class BindStruct {
 
     override fun toString(): String {
         val sb = StringBuilder()
-        sb.append('{')
-        sb.append(key)
+        sb.append('#').append('{').append(key)
         if(jdbcType != null) sb.append(":$jdbcType")
         if(out) sb.append(":out")
         sb.append('}')

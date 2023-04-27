@@ -14,17 +14,17 @@ class QueryBase(sql: String) {
         var i           = 0
         while(i < query.length) {
             val curr = sql[i]
-            val next = sql.getOrNull(i + 1)
+            val next = sql.getOrNull(i+1)
             if(quotChecker.read(curr, next).ignorable()) {
                 buffer.append(curr)
-            } else if( curr == '{' ) {
+            } else if(curr == '#' && next == '{') {
                 val start = i
                 val end   = sql.indexOf('}', i + 1)
                 if(end < 0) {
                     buffer.append(sql.substring(i))
                     break
                 } else {
-                    val definition = sql.substring(start + 1, end)
+                    val definition = sql.substring(start + 2, end)
                     paramStructs.add(BindStruct(definition))
                     queries.add("$buffer")
                     buffer.clear()

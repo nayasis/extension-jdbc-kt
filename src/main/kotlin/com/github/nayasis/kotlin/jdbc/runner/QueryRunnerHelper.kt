@@ -4,10 +4,6 @@ import com.github.nayasis.kotlin.jdbc.query.BindParam
 import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.jdbc.type.TypeMapper
 import com.github.nayasis.kotlin.jdbc.type.implement.NullMapper
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.toCollection
-import kotlinx.coroutines.runBlocking
 import java.sql.CallableStatement
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -15,64 +11,36 @@ import java.sql.SQLException
 import java.sql.SQLSyntaxErrorException
 import java.sql.Statement
 
-fun get(resultSet: ResultSet): Map<String,Any?> {
-    return resultSet.use { rset ->
-        val header = Header(rset)
-        val row = LinkedHashMap<String, Any?>()
-        if(rset.next()) {
-            for (i in 0 until header.size) {
-                row[header[i].name] = convertResult(rset, i, header)
-            }
-        }
-        row
+fun toMap(rset: ResultSet, header: Header = Header(rset)): Map<String,Any?> {
+    val row = LinkedHashMap<String, Any?>()
+    for (i in 0 until header.size) {
+        row[header[i].name] = convertResult(rset, i, header)
     }
+    return row
 }
 
-fun monoFirst(resultSet: ResultSet): Any? {
-    return resultSet.use { rset ->
-        val header = Header(rset)
-        if(rset.next()) {
-            convertResult(rset, 0, header)
-        } else null
-    }
+fun getFirstColumnValue(rset: ResultSet, header: Header = Header(rset)): Any? {
+    return convertResult(rset, 0, header)
 }
 
-fun getAll(resultSet: ResultSet): Flow<Map<String,Any?>> {
-    val header = Header(resultSet)
-    return flow { resultSet.use { rset ->
-        while (rset.next()) {
-            val row = LinkedHashMap<String,Any?>()
-            for (i in 0 until header.size) {
-                row[header[i].name] = convertResult(rset, i, header)
-            }
-            emit(row)
+fun toList(rset: ResultSet, header: Header = Header(rset)): List<Map<String,Any?>> {
+    try {
+        val list = ArrayList<Map<String,Any?>>()
+        while(rset.next()) {
+            list.add(toMap(rset, header))
         }
-    }}
-}
-
-fun <T> fluxFirst(resultSet: ResultSet): Flow<T?> {
-    return flow { resultSet.use { rset ->
-        val header = Header(rset)
-        while (rset.next()) {
-            emit(convertResult(rset, 0, header) as T?)
-        }
-    }}
-}
-
-fun toList(rset: ResultSet): List<Map<String,Any?>> {
-    return runBlocking {
-        getAll(rset).toCollection(ArrayList())
+        return list
+    } finally {
+        runCatching { rset.close() }
     }
 }
 
 private fun convertResult(rset: ResultSet, index: Int, header: Header): Any? {
     val meta = header[index]
     try {
-        val result = meta.type.mapper.getResult(rset, index)
+        val result = meta.type.mapper.getResult(rset, index + 1)
         return if(result is ResultSet) {
-            runBlocking {
-                getAll(result).toCollection(ArrayList())
-            }
+            toList(result)
         } else {
             result
         }

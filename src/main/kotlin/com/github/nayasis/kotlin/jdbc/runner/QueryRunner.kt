@@ -1,35 +1,36 @@
 package com.github.nayasis.kotlin.jdbc.runner
 
 import com.github.nayasis.kotlin.basica.core.collection.toObject
+import com.github.nayasis.kotlin.basica.core.validator.Types
 import com.github.nayasis.kotlin.basica.model.NGrid
+import com.github.nayasis.kotlin.basica.reflection.Reflector
 import com.github.nayasis.kotlin.jdbc.query.Query
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import mu.KotlinLogging
 import java.sql.Connection
 import java.sql.ResultSet
 import kotlin.coroutines.CoroutineContext
+import kotlin.reflect.KClass
 
 private val logger = KotlinLogging.logger {}
 private var supportOracleLobPreFetcher = true
 
+typealias ResultSetHandler<T> = (rset: ResultSet, header: Header) -> T
+
 class QueryRunner(
-    private val connection: Connection,
     private val query: Query,
+    private val connection: Connection,
     override val coroutineContext: CoroutineContext = Dispatchers.IO,
 ): CoroutineScope  {
 
     suspend fun update(): Long {
         logger.trace { query }
-        connection.prepareStatement(query.preparedQuery).use { statement ->
-            setParameter(statement, query.preparedParams)
-            statement.executeLargeUpdate()
-        }
         return connection.prepareStatement(query.preparedQuery).use { statement ->
             setParameter(statement, query.preparedParams)
             async {
@@ -55,7 +56,6 @@ class QueryRunner(
                         val rs = param.jdbcType.mapper.getResult(statement,idx)
                         ans[param.key] = if(rs is ResultSet) toList(rs) else rs
                     }
-
                     while(statement.moreResults) {
                         rtns.add( toList(statement.resultSet) )
                     }
@@ -71,29 +71,39 @@ class QueryRunner(
      * @param fetchSize Int?    row fetch size
      * @param lobFetchSize Int? LOB data prefetch size (works on ORACLE only)
      */
-    suspend fun retrieve(fetchSize: Int? = null, lobFetchSize: Int? = null, maxRows: Int? = null): ResultSet {
+    fun <T: Any?> asFlow(fetchSize: Int? = null, lobFetchSize: Int? = null, maxRows: Int? = null, headerHandler: ((header: Header) -> Unit)? = null, resultSetHandler: ResultSetHandler<T>): Flow<T> {
         logger.trace { query }
-        connection.prepareStatement(query.preparedQuery).use { statement ->
-            fetchSize?.let { statement.fetchSize = it }
-            lobFetchSize?.let {
-                if( supportOracleLobPreFetcher ) {
+        return flow {
+            connection.prepareStatement(query.preparedQuery).use { statement ->
+                fetchSize?.let { statement.fetchSize = it }
+                lobFetchSize?.let {
+                    if (supportOracleLobPreFetcher) {
+                        try {
+                            OracleLobPreFetcher().setPrefetchSize(statement, it)
+                        } catch (e: Exception) {
+                            supportOracleLobPreFetcher = false
+                        }
+                    }
+                }
+                maxRows?.let { statement.maxRows = it }
+                setParameter(statement, query.preparedParams)
+                statement.executeQuery().use { rset ->
                     try {
-                        OracleLobPreFetcher().setPrefetchSize(statement, it)
-                    } catch (e: Exception) {
-                        supportOracleLobPreFetcher = false
+                        val header = Header(rset)
+                        headerHandler?.invoke(header)
+                        while (rset.next()) {
+                            emit(resultSetHandler.invoke(rset, header))
+                        }
+                    } finally {
+                        runCatching { if (!rset.isClosed) rset.close() }
                     }
                 }
             }
-            maxRows?.let { statement.maxRows = it }
-            setParameter(statement, query.preparedParams)
-            return async {
-                statement.executeQuery()
-            }.await()
         }
     }
 
-    suspend fun get(): Map<String, Any?> {
-        return retrieve(null, null).let { get(it) }
+    suspend fun get(): Map<String,Any?> {
+        return asFlow(maxRows = 1) { rset, header -> toMap(rset, header)  }.firstOrNull() ?: emptyMap()
     }
 
     suspend inline fun <reified T> getAs(): T {
@@ -101,35 +111,34 @@ class QueryRunner(
     }
 
     suspend inline fun <reified T> getValue(): T? {
-        return retrieve(null, null).let { monoFirst(it) as T? }
+        val typeKlass = T::class as KClass<Any>
+        return asFlow(maxRows = 1) { rset, header -> getFirstColumnValue(rset, header)  }.firstOrNull().let { Types.cast(it, typeKlass) } as T?
     }
 
-    suspend fun getAll(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<Map<String,Any?>> {
-        return retrieve(fetchSize, lobFetchSize).let {
-            getAll(it)
+    fun getAll(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<Map<String,Any?>> {
+        return asFlow(fetchSize, lobFetchSize) { rset, header -> toMap(rset, header)  }
+    }
+
+    inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
+        val typeKlass = T::class as KClass<Any>
+        return getAll(fetchSize, lobFetchSize).map {
+            Reflector.toObject(it, typeKlass) as T
         }
     }
 
-    suspend inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
-        return getAll(fetchSize, lobFetchSize).map { it.toObject() }
-    }
-
-    suspend inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
-        return retrieve(fetchSize, lobFetchSize).let { fluxFirst(it) }
+    inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
+        val typeKlass = T::class as KClass<Any>
+        return asFlow(fetchSize, lobFetchSize)  { rset, header -> getFirstColumnValue(rset, header).let { Types.cast(it, typeKlass) } as T? }
     }
 
     suspend fun getAllToNGrid(fetchSize: Int? = null, lobFetchSize: Int? = null): NGrid {
-        return async {
-            val grid = NGrid()
-            retrieve(fetchSize, lobFetchSize).let { rset ->
-                val header = Header(rset)
-                grid.header.addAll(header.keys)
-                getAll(rset).collect {
-                    grid.addRow(it)
-                }
-            }
-            grid
-        }.await()
+        val grid = NGrid()
+        asFlow(fetchSize, lobFetchSize, headerHandler = { header -> grid.header.addAll(header.keys) }) { rset, header ->
+            toMap(rset, header)
+        }.collect {
+            grid.addRow(it)
+        }
+        return grid
     }
 
 }
@@ -142,4 +151,4 @@ data class CallResult(
 fun Query.runner(
     connection: Connection,
     coroutineContext: CoroutineContext = Dispatchers.IO,
-): QueryRunner = QueryRunner(connection, this,coroutineContext)
+): QueryRunner = QueryRunner(this, connection, coroutineContext)
