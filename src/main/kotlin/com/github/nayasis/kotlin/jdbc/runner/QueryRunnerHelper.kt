@@ -1,15 +1,26 @@
 package com.github.nayasis.kotlin.jdbc.runner
 
+import com.github.nayasis.kotlin.basica.core.klass.isEnum
+import com.github.nayasis.kotlin.basica.core.klass.isPrimitive
 import com.github.nayasis.kotlin.jdbc.query.BindParam
 import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.jdbc.type.TypeMapper
 import com.github.nayasis.kotlin.jdbc.type.implement.NullMapper
+import java.net.URL
 import java.sql.CallableStatement
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.sql.RowId
 import java.sql.SQLException
 import java.sql.SQLSyntaxErrorException
 import java.sql.Statement
+import java.time.temporal.Temporal
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.LinkedHashMap
+import kotlin.reflect.KClass
+import kotlin.reflect.full.isSubclassOf
 
 fun toMap(rset: ResultSet, header: Header = Header(rset)): Map<String,Any?> {
     val row = LinkedHashMap<String, Any?>()
@@ -89,5 +100,23 @@ private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam)
             val mapper = JdbcType.mapper(param.value!!::class) as TypeMapper<Any>
             mapper.setParameter(statement, i + 1, param.value!!)
         }
+    }
+}
+
+fun isSupportedPrimitive(klass: KClass<Any>): Boolean {
+    return when {
+        klass.isPrimitive -> true
+        klass.isEnum -> true
+        klass.isSubclassOf(CharSequence::class) -> true
+        klass == Char::class -> true
+        klass == Boolean::class -> true
+        klass.isSubclassOf(Number::class) -> true
+        klass == ByteArray::class -> true
+        klass == Date::class -> true
+        klass == Calendar::class -> true
+        klass.isSubclassOf(Temporal::class) -> true
+        klass == URL::class -> true
+        klass == RowId::class -> true
+        else -> false
     }
 }

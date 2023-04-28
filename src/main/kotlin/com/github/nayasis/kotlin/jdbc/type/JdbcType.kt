@@ -104,8 +104,8 @@ enum class JdbcType(
 
         private val mapperByClass = mapOf(
             String::class to StringMapper,
-            StringBuilder::class to StringBuilderMapper,
-            StringBuffer::class to StringBufferMapper,
+            StringBuilder::class to CharSequenceMapper,
+            StringBuffer::class to CharSequenceMapper,
             Char::class to CharacterMapper,
             Boolean::class to BooleanMapper,
             Int::class to IntMapper,

@@ -102,17 +102,19 @@ class QueryRunner(
         }
     }
 
-    suspend fun get(): Map<String,Any?> {
-        return asFlow(maxRows = 1) { rset, header -> toMap(rset, header)  }.firstOrNull() ?: emptyMap()
+    suspend fun get(): Map<String,Any?>? {
+        return asFlow(maxRows = 1) { rset, header -> toMap(rset, header)  }.firstOrNull()
     }
 
-    suspend inline fun <reified T> getAs(): T {
-        return get().toObject()
-    }
-
-    suspend inline fun <reified T> getValue(): T? {
+    suspend inline fun <reified T> getAs(): T? {
         val typeKlass = T::class as KClass<Any>
-        return asFlow(maxRows = 1) { rset, header -> getFirstColumnValue(rset, header)  }.firstOrNull().let { Types.cast(it, typeKlass) } as T?
+        return if(isSupportedPrimitive(typeKlass)) {
+            asFlow(maxRows = 1) { rset, header -> getFirstColumnValue(rset, header)  }.firstOrNull()?.let {
+                Types.cast(it, typeKlass) as T?
+            }
+        } else {
+            get()?.toObject()
+        }
     }
 
     fun getAll(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<Map<String,Any?>> {
