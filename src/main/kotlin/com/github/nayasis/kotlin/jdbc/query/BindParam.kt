@@ -48,20 +48,13 @@ class BindParam {
                     JdbcType.TIMESTAMP -> this.value = value.toString().toLocalDateTime()
                     else -> return
                 }
-//            } else if(value is Date) {
-//                when(jdbcType) {
-//                    JdbcType.DATETIME  -> this.value = (value as Date).toLocalDateTime().let { it.withNano(0) }
-//                    JdbcType.TIME      -> this.value = (value as Date).toLocalTime()
-//                    JdbcType.TIMESTAMP -> this.value = (value as Date).toLocalDateTime()
-//                    else -> return
-//                }
             }
         }
 
     constructor(value: Any?, struct: BindStruct) {
         this.key = struct.key
         this.value = value
-        this.out   = struct.out ?: false
+        this.out   = struct.out
         this.jdbcType = struct.jdbcType ?: value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR
     }
 

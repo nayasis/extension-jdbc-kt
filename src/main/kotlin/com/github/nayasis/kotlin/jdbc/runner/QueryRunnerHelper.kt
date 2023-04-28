@@ -94,9 +94,11 @@ private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam)
         NullMapper.setParameter(statement, i + 1, null as Nothing)
     } else {
         try {
+            @Suppress("UNCHECKED_CAST")
             val mapper = param.jdbcType.mapper as TypeMapper<Any>
             mapper.setParameter(statement, i + 1, param.value!!)
         } catch (e: Exception) {
+            @Suppress("UNCHECKED_CAST")
             val mapper = JdbcType.mapper(param.value!!::class) as TypeMapper<Any>
             mapper.setParameter(statement, i + 1, param.value!!)
         }

@@ -49,9 +49,9 @@ repositories {
 
 dependencies {
 
-//	implementation("com.github.nayasis:basica-kt:0.2.21")
+	implementation("com.github.nayasis:basica-kt:0.2.21")
 //	implementation("com.github.nayasis:basica-kt:develop-SNAPSHOT"){ isChanging = true }
-	implementation("com.github.nayasis:basica-kt:0.2.21-SNAPSHOT"){ isChanging = true }
+//	implementation("com.github.nayasis:basica-kt:0.2.21-SNAPSHOT"){ isChanging = true }
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")

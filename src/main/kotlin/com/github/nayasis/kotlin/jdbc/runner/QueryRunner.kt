@@ -107,6 +107,7 @@ class QueryRunner(
     }
 
     suspend inline fun <reified T> getAs(): T? {
+        @Suppress("UNCHECKED_CAST")
         val typeKlass = T::class as KClass<Any>
         return if(isSupportedPrimitive(typeKlass)) {
             asFlow(maxRows = 1) { rset, header -> getFirstColumnValue(rset, header)  }.firstOrNull()?.let {
@@ -122,6 +123,7 @@ class QueryRunner(
     }
 
     inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
+        @Suppress("UNCHECKED_CAST")
         val typeKlass = T::class as KClass<Any>
         return getAll(fetchSize, lobFetchSize).map {
             Reflector.toObject(it, typeKlass) as T
@@ -129,6 +131,7 @@ class QueryRunner(
     }
 
     inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
+        @Suppress("UNCHECKED_CAST")
         val typeKlass = T::class as KClass<Any>
         return asFlow(fetchSize, lobFetchSize)  { rset, header -> getFirstColumnValue(rset, header).let { Types.cast(it, typeKlass) } as T? }
     }
