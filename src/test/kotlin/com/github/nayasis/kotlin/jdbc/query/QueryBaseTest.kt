@@ -2,7 +2,6 @@ package com.github.nayasis.kotlin.jdbc.query
 
 import io.kotest.core.spec.style.StringSpec
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
 
 class QueryBaseTest: StringSpec() { init {
 "basic" {
@@ -26,8 +25,8 @@ class QueryBaseTest: StringSpec() { init {
 
     // add parameters
 
-    sql.addParam("name", "Microsoft")
-    sql.addParam("age", 13)
+    sql.setParam("name", "Microsoft")
+    sql.setParam("age", 13)
 
     assertEquals("""
         SELECT *
@@ -45,7 +44,7 @@ class QueryBaseTest: StringSpec() { init {
         AND    depart = #{depart}
     """.trimIndent(), "${sql.preparedQuery}")
 
-    sql.addParam("depart", "HR")
+    sql.setParam("depart", "HR")
 
     assertEquals("""
         SELECT *
@@ -65,7 +64,7 @@ class QueryBaseTest: StringSpec() { init {
 
     // reset parameters
 
-    sql.params.clear()
+    sql.reset()
 
     assertEquals("""
         SELECT *
@@ -84,8 +83,8 @@ class QueryBaseTest: StringSpec() { init {
     """.trimIndent(), "${sql.preparedQuery}")
 
     // add map parameters
-    sql.params.clear()
-    sql.addParam(mapOf(
+    sql.reset()
+    sql.setParam(mapOf(
         "name" to "J.R.R.Tolkien",
         "age" to 57,
         "depart" to "academic",
@@ -100,8 +99,8 @@ class QueryBaseTest: StringSpec() { init {
     """.trimIndent(), "$sql")
 
     // add VO parameter
-    sql.params.clear()
-    sql.addParam(ParamVo(
+    sql.reset()
+    sql.setParam(ParamVo(
         name = "Jake",
         age = 13,
         depart = "elementary"
@@ -123,7 +122,7 @@ class QueryBaseTest: StringSpec() { init {
         WHERE  age IN (#{ages})
     """.trimIndent().toQuery()
 
-    sql.addParam("ages", listOf(12,17,34,92) )
+    sql.setParam("ages", listOf(12,17,34,92) )
 
     assertEquals(4, sql.preparedParams.size)
 

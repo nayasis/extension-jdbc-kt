@@ -89,6 +89,35 @@ fun setParameter(statement: Statement, params: List<BindParam>): Map<Int,BindPar
     return outParams
 }
 
+fun setParameter(statement: Statement, params: Map<Int,BindParam>): Map<Int,BindParam>? {
+    var outParams: HashMap<Int,BindParam>? = null
+    when (statement) {
+        is CallableStatement -> {
+            params.forEach { (i, param) ->
+                try {
+                    if(param.out) {
+                        if(outParams == null)
+                            outParams = HashMap()
+                        statement.registerOutParameter(i+1, param.jdbcType.code)
+                        outParams?.put(i+1, param)
+                    } else {
+                        setParameter(statement, i, param)
+                    }
+                } catch (e: Exception) {
+                    throw SQLSyntaxErrorException("error on binding parameter (index:$i, parameter:[$param])")
+                }
+            }
+        }
+        is PreparedStatement -> {
+            params.forEach { (i, param) ->
+                setParameter(statement, i, param)
+            }
+        }
+        else -> throw UnsupportedOperationException("Not supported statement. (${statement::class.simpleName})")
+    }
+    return outParams
+}
+
 private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam) {
     if (param.value == null) {
         NullMapper.setParameter(statement, i + 1, null as Nothing)
@@ -105,7 +134,7 @@ private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam)
     }
 }
 
-fun isSupportedPrimitive(klass: KClass<Any>): Boolean {
+fun isSupportedPrimitive(klass: KClass<*>): Boolean {
     return when {
         klass.isPrimitive -> true
         klass.isEnum -> true

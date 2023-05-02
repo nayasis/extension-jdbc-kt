@@ -3,35 +3,41 @@ package com.github.nayasis.kotlin.jdbc.query
 import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.basica.reflection.Reflector
 
-class Query(
+open class Query(
     private val queryBase: QueryBase
 ) {
 
     // key : BindParam or List<BindParam>
-    val params = HashMap<String,Any>()
+    private val params = HashMap<String,Any>()
 
     val paramStructs: List<BindStruct>
         get() = queryBase.paramStructs
 
     constructor(sql: String) : this(QueryBase(sql))
 
-    fun addParam(vo: Any): Query {
-        return addParam(Reflector.toMap(vo))
+    fun setParam(vo: Any): Query {
+        val param = try {
+            Reflector.toMap(vo)
+        } catch (e: Exception) {
+            throw TypeCastException("Parameter muse be value object")
+        }
+        return setParam(param)
     }
 
-    fun addParam(params: Map<String,Any?>): Query {
-        params.forEach { (key, value) -> addParam(key,value) }
+    fun setParam(param: Map<String,Any?>): Query {
+        param.forEach { (key, value) -> setParam(key,value) }
         return this
     }
 
-    fun addParam(key: String, param: Any?): Query {
-        val struct = queryBase.getParamStruct(key) ?: BindStruct(key)
-        if(param is Array<*> && struct.jdbcType != JdbcType.ARRAY) {
-            params[key] = param.map { BindParam(it,struct) }
-        } else if( param is Collection<*>  && struct.jdbcType != JdbcType.ARRAY ) {
-            params[key] = param.map { BindParam(it,struct) }
-        } else {
-            params[key] = BindParam(param,struct)
+    fun setParam(key: String, param: Any?): Query {
+        queryBase.getParamStruct(key)?.let { struct ->
+            if(param is Array<*> && struct.jdbcType != JdbcType.ARRAY) {
+                params[key] = param.map { BindParam(it,struct) }
+            } else if( param is Collection<*>  && struct.jdbcType != JdbcType.ARRAY ) {
+                params[key] = param.map { BindParam(it,struct) }
+            } else {
+                params[key] = BindParam(param,struct)
+            }
         }
         return this
     }

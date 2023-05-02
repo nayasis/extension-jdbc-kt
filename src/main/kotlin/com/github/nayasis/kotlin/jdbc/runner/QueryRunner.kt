@@ -29,40 +29,36 @@ class QueryRunner(
     override val coroutineContext: CoroutineContext = Dispatchers.IO,
 ): CoroutineScope  {
 
-    suspend fun update(): Long {
+    suspend fun execute(): Long {
         logger.trace { query }
-        return connection.prepareStatement(query.preparedQuery).use { statement ->
+        return async { connection.prepareStatement(query.preparedQuery).use { statement ->
             setParameter(statement, query.preparedParams)
-            async {
-                try {
-                    statement.executeLargeUpdate()
-                } catch (e: Exception) {
-                    logger.error { "Binding Parameters\n  - ${query.preparedParams.map { it.value }}" }
-                    throw e
-                }
-            }.await()
-        }
+            try {
+                statement.executeLargeUpdate()
+            } catch (e: Exception) {
+                logger.error { "Binding Parameters\n  - ${query.preparedParams.map { it.value }}" }
+                throw e
+            }
+        }}.await()
     }
 
     suspend fun call(): CallResult {
         logger.trace { query }
-        connection.prepareCall(query.preparedQuery).use { statement ->
+        return async { connection.prepareCall(query.preparedQuery).use { statement ->
             val outParams = setParameter(statement, query.preparedParams)
-            return async {
-                val ans  = mutableMapOf<String,Any?>()
-                val rtns = mutableListOf<List<Map<String,Any?>>>()
-                if(statement.execute()) {
-                    outParams?.forEach { (idx, param ) ->
-                        val rs = param.jdbcType.mapper.getResult(statement,idx)
-                        ans[param.key] = if(rs is ResultSet) toList(rs) else rs
-                    }
-                    while(statement.moreResults) {
-                        rtns.add( toList(statement.resultSet) )
-                    }
+            val outs      = mutableMapOf<String,Any?>()
+            val returns   = mutableListOf<List<Map<String,Any?>>>()
+            if(statement.execute()) {
+                outParams?.forEach { (idx, param ) ->
+                    val rs = param.jdbcType.mapper.getResult(statement,idx)
+                    outs[param.key] = if(rs is ResultSet) toList(rs) else rs
                 }
-                CallResult(ans,rtns)
-            }.await()
-        }
+                while(statement.moreResults) {
+                    returns.add( toList(statement.resultSet) )
+                }
+            }
+            CallResult(outs,returns)
+        }}.await()
     }
 
     /**
@@ -73,33 +69,31 @@ class QueryRunner(
      */
     fun <T: Any?> asFlow(fetchSize: Int? = null, lobFetchSize: Int? = null, maxRows: Int? = null, headerHandler: ((header: Header) -> Unit)? = null, resultSetHandler: ResultSetHandler<T>): Flow<T> {
         logger.trace { query }
-        return flow {
-            connection.prepareStatement(query.preparedQuery).use { statement ->
-                fetchSize?.let { statement.fetchSize = it }
-                lobFetchSize?.let {
-                    if (supportOracleLobPreFetcher) {
-                        try {
-                            OracleLobPreFetcher().setPrefetchSize(statement, it)
-                        } catch (e: Exception) {
-                            supportOracleLobPreFetcher = false
-                        }
-                    }
-                }
-                maxRows?.let { statement.maxRows = it }
-                setParameter(statement, query.preparedParams)
-                statement.executeQuery().use { rset ->
+        return flow { connection.prepareStatement(query.preparedQuery).use { statement ->
+            fetchSize?.let { statement.fetchSize = it }
+            lobFetchSize?.let {
+                if (supportOracleLobPreFetcher) {
                     try {
-                        val header = Header(rset)
-                        headerHandler?.invoke(header)
-                        while (rset.next()) {
-                            emit(resultSetHandler.invoke(rset, header))
-                        }
-                    } finally {
-                        runCatching { if (!rset.isClosed) rset.close() }
+                        OracleLobPreFetcher().setPrefetchSize(statement, it)
+                    } catch (e: Exception) {
+                        supportOracleLobPreFetcher = false
                     }
                 }
             }
-        }
+            maxRows?.let { statement.maxRows = it }
+            setParameter(statement, query.preparedParams)
+            statement.executeQuery().use { rset ->
+                try {
+                    val header = Header(rset)
+                    headerHandler?.invoke(header)
+                    while (rset.next()) {
+                        emit(resultSetHandler.invoke(rset, header))
+                    }
+                } finally {
+                    runCatching { if (!rset.isClosed) rset.close() }
+                }
+            }
+        }}
     }
 
     suspend fun get(): Map<String,Any?>? {
@@ -125,15 +119,11 @@ class QueryRunner(
     inline fun <reified T> getAllAs(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T> {
         @Suppress("UNCHECKED_CAST")
         val typeKlass = T::class as KClass<Any>
-        return getAll(fetchSize, lobFetchSize).map {
-            Reflector.toObject(it, typeKlass) as T
+        return if(isSupportedPrimitive(typeKlass)) {
+            asFlow(fetchSize, lobFetchSize)  { rset, header -> getFirstColumnValue(rset, header).let { Types.cast(it, typeKlass) } as T }
+        } else {
+            getAll(fetchSize, lobFetchSize).map {Reflector.toObject(it, typeKlass) as T }
         }
-    }
-
-    inline fun <reified T> getValues(fetchSize: Int? = null, lobFetchSize: Int? = null): Flow<T?> {
-        @Suppress("UNCHECKED_CAST")
-        val typeKlass = T::class as KClass<Any>
-        return asFlow(fetchSize, lobFetchSize)  { rset, header -> getFirstColumnValue(rset, header).let { Types.cast(it, typeKlass) } as T? }
     }
 
     suspend fun getAllToNGrid(fetchSize: Int? = null, lobFetchSize: Int? = null): NGrid {

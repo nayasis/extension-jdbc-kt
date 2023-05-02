@@ -24,8 +24,7 @@ class QueryRunnerTest: StringSpec({
         connection.close()
     }
 
-    "simple" {
-
+    suspend fun createTable() {
         """
             CREATE TABLE IF NOT EXISTS TB_USER (
                 name VARCHAR(10) PRIMARY KEY, 
@@ -33,11 +32,36 @@ class QueryRunnerTest: StringSpec({
                 depart VARCHAR(200), 
                 reg_dt TIMESTAMP
             )
-        """.trimIndent().toQuery().runner(connection).update()
+        """.trimIndent().toQuery().runner(connection).execute()
+    }
 
+    suspend fun deleteAll() {
         """
             DELETE FROM TB_USER
-        """.trimIndent().toQuery().runner(connection).update()
+        """.trimIndent().toQuery().runner(connection).execute()
+    }
+
+    suspend fun insertUser(user: User) {
+        val sqlInsert = """
+            INSERT INTO TB_USER (
+                name, age, depart, reg_dt
+            ) VALUES (
+                #{name}, #{age}, #{department}, #{regDt}
+            )
+        """.trimIndent().toQuery()
+        sqlInsert.reset().setParam(user).runner(connection).execute()
+    }
+
+    suspend fun insertDummies() {
+        val now = LocalDateTime.now()
+        (1..100).map { User("name-$it", 20 + it, "dev", now.plusHours(it.toLong())) }
+
+    }
+
+    "simple" {
+
+        createTable()
+        deleteAll()
 
         val sqlInsert = """
             INSERT INTO TB_USER (
@@ -50,15 +74,15 @@ class QueryRunnerTest: StringSpec({
         val now = LocalDateTime.now()
 
         sqlInsert.reset()
-            .addParam("name", "jake")
-            .addParam("age", 13)
-            .addParam("department", "HR")
-            .addParam("regDt", now.plusDays(1))
-            .runner(connection).update()
+            .setParam("name", "jake")
+            .setParam("age", 13)
+            .setParam("department", "HR")
+            .setParam("regDt", now.plusDays(1))
+            .runner(connection).execute()
 
-        sqlInsert.reset().addParam(
+        sqlInsert.reset().setParam(
             User( "nathen", 45, "Dev", now.plusDays(2) )
-        ).runner(connection).update()
+        ).runner(connection).execute()
 
         connection.commit()
 
@@ -84,6 +108,10 @@ class QueryRunnerTest: StringSpec({
 
         "$r1" shouldBe "$r2"
 
+        val values = sqlSelect.runner(connection).getAllAs<String?>().toList()
+        println(values)
+        values.size shouldBe 2
+
         val firstRowName = sqlSelect.runner(connection).getAs<String>()
         firstRowName shouldBe "jake"
 
@@ -102,14 +130,15 @@ class QueryRunnerTest: StringSpec({
         """.trimIndent().toQuery()
 
         sqlDelete
-            .addParam("name", "jake")
+            .setParam("name", "jake")
             .runner(connection)
-            .update()
+            .execute()
 
         cnt = sqlCount.runner(connection).getAs<Int>()
         cnt shouldBe 1
 
     }
+
 })
 
 @NoArg
