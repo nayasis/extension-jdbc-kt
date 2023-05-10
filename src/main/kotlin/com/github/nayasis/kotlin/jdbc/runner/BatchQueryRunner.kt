@@ -21,7 +21,7 @@ class BatchQueryRunner(
         return async {
             var count = 0L
             connection.prepareStatement(query.preparedQuery).use { statement ->
-                query.params.forEach { param ->
+                query.preparedParams.forEach { param ->
                     count++
                     setParameter(statement, param)
                     statement.addBatch()
@@ -51,7 +51,7 @@ class BatchQueryRunner(
 
 }
 
-fun BatchQuery.batchRunner(
+fun BatchQuery.runner(
     connection: Connection,
     coroutineContext: CoroutineContext = Dispatchers.IO,
 ): BatchQueryRunner = BatchQueryRunner(this, connection, coroutineContext)

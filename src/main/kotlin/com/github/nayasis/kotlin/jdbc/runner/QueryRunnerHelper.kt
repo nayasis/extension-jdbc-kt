@@ -16,9 +16,6 @@ import java.sql.SQLSyntaxErrorException
 import java.sql.Statement
 import java.time.temporal.Temporal
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.LinkedHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
@@ -60,35 +57,6 @@ private fun convertResult(rset: ResultSet, index: Int, header: Header): Any? {
     }
 }
 
-fun setParameter(statement: Statement, params: List<BindParam>): Map<Int,BindParam>? {
-    var outParams: HashMap<Int,BindParam>? = null
-    when (statement) {
-        is CallableStatement -> {
-            params.forEachIndexed { i, param ->
-                try {
-                    if(param.out) {
-                        if(outParams == null)
-                            outParams = HashMap()
-                        statement.registerOutParameter(i+1, param.jdbcType.code)
-                        outParams?.put(i+1, param)
-                    } else {
-                        setParameter(statement, i, param)
-                    }
-                } catch (e: Exception) {
-                    throw SQLSyntaxErrorException("error on binding parameter (index:$i, parameter:[$param])")
-                }
-            }
-        }
-        is PreparedStatement -> {
-            params.forEachIndexed { i, param ->
-                setParameter(statement, i, param)
-            }
-        }
-        else -> throw UnsupportedOperationException("Not supported statement. (${statement::class.simpleName})")
-    }
-    return outParams
-}
-
 fun setParameter(statement: Statement, params: Map<Int,BindParam>): Map<Int,BindParam>? {
     var outParams: HashMap<Int,BindParam>? = null
     when (statement) {
@@ -101,7 +69,7 @@ fun setParameter(statement: Statement, params: Map<Int,BindParam>): Map<Int,Bind
                         statement.registerOutParameter(i+1, param.jdbcType.code)
                         outParams?.put(i+1, param)
                     } else {
-                        setParameter(statement, i, param)
+                        setParameter(statement, i+1, param)
                     }
                 } catch (e: Exception) {
                     throw SQLSyntaxErrorException("error on binding parameter (index:$i, parameter:[$param])")
@@ -110,7 +78,7 @@ fun setParameter(statement: Statement, params: Map<Int,BindParam>): Map<Int,Bind
         }
         is PreparedStatement -> {
             params.forEach { (i, param) ->
-                setParameter(statement, i, param)
+                setParameter(statement, i+1, param)
             }
         }
         else -> throw UnsupportedOperationException("Not supported statement. (${statement::class.simpleName})")
@@ -120,16 +88,16 @@ fun setParameter(statement: Statement, params: Map<Int,BindParam>): Map<Int,Bind
 
 private fun setParameter(statement: PreparedStatement, i: Int, param: BindParam) {
     if (param.value == null) {
-        NullMapper.setParameter(statement, i + 1, null as Nothing)
+        NullMapper.setParameter(statement, i, null as Nothing)
     } else {
         try {
             @Suppress("UNCHECKED_CAST")
             val mapper = param.jdbcType.mapper as TypeMapper<Any>
-            mapper.setParameter(statement, i + 1, param.value!!)
+            mapper.setParameter(statement, i, param.value!!)
         } catch (e: Exception) {
             @Suppress("UNCHECKED_CAST")
             val mapper = JdbcType.mapper(param.value!!::class) as TypeMapper<Any>
-            mapper.setParameter(statement, i + 1, param.value!!)
+            mapper.setParameter(statement, i, param.value!!)
         }
     }
 }

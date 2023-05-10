@@ -2,11 +2,15 @@ package com.github.nayasis.kotlin.jdbc.runner
 
 import com.github.nayasis.kotlin.basica.annotation.NoArg
 import com.github.nayasis.kotlin.basica.core.collection.toObject
+import com.github.nayasis.kotlin.jdbc.common.UserCommons
+import com.github.nayasis.kotlin.jdbc.common.UserCommons.Companion.createTable
+import com.github.nayasis.kotlin.jdbc.common.UserCommons.Companion.deleteAll
 import com.github.nayasis.kotlin.jdbc.query.toQuery
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import java.math.BigDecimal
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.LocalDateTime
@@ -24,44 +28,10 @@ class QueryRunnerTest: StringSpec({
         connection.close()
     }
 
-    suspend fun createTable() {
-        """
-            CREATE TABLE IF NOT EXISTS TB_USER (
-                name VARCHAR(10) PRIMARY KEY, 
-                age  INT, 
-                depart VARCHAR(200), 
-                reg_dt TIMESTAMP
-            )
-        """.trimIndent().toQuery().runner(connection).execute()
-    }
-
-    suspend fun deleteAll() {
-        """
-            DELETE FROM TB_USER
-        """.trimIndent().toQuery().runner(connection).execute()
-    }
-
-    suspend fun insertUser(user: User) {
-        val sqlInsert = """
-            INSERT INTO TB_USER (
-                name, age, depart, reg_dt
-            ) VALUES (
-                #{name}, #{age}, #{department}, #{regDt}
-            )
-        """.trimIndent().toQuery()
-        sqlInsert.reset().setParam(user).runner(connection).execute()
-    }
-
-    suspend fun insertDummies() {
-        val now = LocalDateTime.now()
-        (1..100).map { User("name-$it", 20 + it, "dev", now.plusHours(it.toLong())) }
-
-    }
-
     "simple" {
 
-        createTable()
-        deleteAll()
+        createTable(connection)
+        deleteAll(connection)
 
         val sqlInsert = """
             INSERT INTO TB_USER (
@@ -139,6 +109,44 @@ class QueryRunnerTest: StringSpec({
 
     }
 
+    "key in multiple reference" {
+
+        """
+            CREATE TABLE IF NOT EXISTS TB_USER (
+                name  VARCHAR(10) PRIMARY KEY, 
+                age1  INT, 
+                age2  BIGINT, 
+                age3  DECIMAL
+            )
+        """.trimIndent().toQuery().runner(connection).execute()
+
+        val sqlInsert = """
+            INSERT INTO TB_USER (
+                name, age1, age2, age3
+            ) VALUES (
+                #{name}, #{name:Int}, #{name:Long}, #{name:Decimal}
+            )
+        """.trimIndent().toQuery()
+
+        for(i in 1..9) {
+            sqlInsert.setParam("name", i * 0.5).runner(connection).execute()
+        }
+
+        val res = UserCommons.getAll<UserMultipleReference>(connection).toList()
+
+        println(res.joinToString("\n"))
+
+        res.size shouldBe 9
+
+        res.sumOf { it.age1 ?: 0 } shouldBe 25
+        res.sumOf { it.age2 ?: 0 } shouldBe 25L
+        res.sumOf { it.age3 ?: BigDecimal.ZERO } shouldBe BigDecimal.valueOf( 25)
+
+        res.first().name shouldBe "0.5"
+        res.last().name shouldBe "4.5"
+
+    }
+
 })
 
 @NoArg
@@ -147,4 +155,12 @@ data class User (
     var age: Int? = null,
     var department: String? = null,
     var regDt: LocalDateTime? = null,
+)
+
+@NoArg
+data class UserMultipleReference (
+    var name: String? = null,
+    var age1: Int? = null,
+    var age2: Long? = null,
+    var age3: BigDecimal? = null,
 )

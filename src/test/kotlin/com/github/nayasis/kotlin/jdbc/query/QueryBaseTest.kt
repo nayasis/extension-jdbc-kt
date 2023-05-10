@@ -5,13 +5,18 @@ import org.junit.jupiter.api.Assertions.*
 
 class QueryBaseTest: StringSpec() { init {
 "basic" {
-    val sql = """
-        SELECT *
-        FROM   TABLE
-        WHERE  name   = #{name:VARCHAR}
-        AND    age    = #{age:NUMERIC}
-        AND    depart = #{depart}
-    """.trimIndent().toQuery()
+
+    val sqlRaw =  """
+            SELECT *
+            FROM   TABLE
+            WHERE  name   = #{name:VARCHAR}
+            AND    age    = #{age:NUMERIC}
+            AND    depart = #{depart}
+        """.trimIndent()
+
+    assertEquals(3, QueryBase(sqlRaw).paramStructs.size)
+
+    val sql = sqlRaw.toQuery()
 
     assertEquals("""
         SELECT *
@@ -21,7 +26,7 @@ class QueryBaseTest: StringSpec() { init {
         AND    depart = #{depart}
     """.trimIndent(), "$sql")
 
-    assertEquals(3, sql.paramStructs.size)
+
 
     // add parameters
 

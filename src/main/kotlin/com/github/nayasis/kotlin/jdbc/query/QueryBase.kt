@@ -5,6 +5,8 @@ class QueryBase(sql: String) {
     val queries = ArrayList<String>()
     val paramStructs = ArrayList<BindStruct>()
 
+    val paramIndices: Map<String,List<Int>>
+
     private val paramStructsByKey: Map<String,BindStruct>
 
     init {
@@ -37,6 +39,11 @@ class QueryBase(sql: String) {
         }
         if(buffer.isNotEmpty())
             queries.add("$buffer")
+
+        paramIndices = paramStructs.mapIndexed { index, bindStruct ->
+            bindStruct.key to index
+        }.groupBy({ it.first }, {it.second})
+
         paramStructsByKey = paramStructs.associateBy { it.key }
     }
 

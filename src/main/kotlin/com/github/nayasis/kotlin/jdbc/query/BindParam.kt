@@ -51,6 +51,12 @@ class BindParam {
             }
         }
 
+    constructor(struct: BindStruct) {
+        this.key = struct.key
+        this.out   = struct.out
+        this.jdbcType = struct.jdbcType ?: JdbcType.VARCHAR
+    }
+
     constructor(value: Any?, struct: BindStruct) {
         this.key = struct.key
         this.value = value

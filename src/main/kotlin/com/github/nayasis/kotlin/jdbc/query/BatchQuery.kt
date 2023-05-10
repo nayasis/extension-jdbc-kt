@@ -7,17 +7,9 @@ open class BatchQuery(
 ) {
 
     @Suppress("PrivatePropertyName")
-    private val params_back = ArrayList<Map<Int,BindParam>>()
+    private val bindParams = ArrayList<Map<Int,BindParam>>()
 
-    private val paramIndices = queryBase.paramStructs.mapIndexed { index, bindStruct ->
-        bindStruct.key to index
-    }.groupBy({ it.first }, {it.second})
-
-    val params: List<Map<Int,BindParam>>
-        get() = params_back
-
-    val paramStructs: List<BindStruct>
-        get() = queryBase.paramStructs
+    private val paramIndices = queryBase.paramIndices
 
     constructor(sql: String) : this(QueryBase(sql))
 
@@ -39,12 +31,12 @@ open class BatchQuery(
             }
         }
         if(bindParams.size < queryBase.paramStructs.size) {
-            val originalKeys = queryBase.paramStructs.map { it.key }.toMutableSet()
-            val bindKeys = bindParams.map { it.value.key }.toSet()
-            originalKeys.removeAll(bindKeys)
-            throw IllegalArgumentException("Some keys are missing ($originalKeys)")
+            val keysInQuery = queryBase.paramStructs.map { it.key }.toMutableSet()
+            val keysInParam = bindParams.map { it.value.key }.toSet()
+            keysInQuery.removeAll(keysInParam)
+            throw IllegalArgumentException("Some keys are missing. ($keysInQuery)")
         }
-        params_back.add(bindParams)
+        this.bindParams.add(bindParams)
         return this
     }
 
@@ -60,17 +52,20 @@ open class BatchQuery(
     }
 
     fun reset(): BatchQuery {
-        params_back.clear()
+        bindParams.clear()
         return this
     }
 
     val preparedQuery: String
         get() = queryBase.queries.joinToString("?")
 
+    val preparedParams: List<Map<Int,BindParam>>
+        get() = bindParams
+
     override fun toString(): String {
         return StringBuilder()
-            .append(">> parameter count: ${params_back.size}")
-            .append(">> query\n${queryBase.queries.joinToString("?")}")
+            .append(">> batch parameter count: ${bindParams.size}")
+            .append(">> batch query\n$preparedQuery")
             .toString()
     }
 

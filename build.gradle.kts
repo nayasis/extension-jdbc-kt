@@ -49,7 +49,7 @@ repositories {
 
 dependencies {
 
-	implementation("com.github.nayasis:basica-kt:0.2.21")
+	implementation("com.github.nayasis:basica-kt:0.2.22")
 //	implementation("com.github.nayasis:basica-kt:develop-SNAPSHOT"){ isChanging = true }
 //	implementation("com.github.nayasis:basica-kt:0.2.21-SNAPSHOT"){ isChanging = true }
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -64,8 +64,6 @@ dependencies {
 	testImplementation("io.kotest:kotest-assertions-core:5.6.1")
 	testImplementation("com.h2database:h2:2.1.212")
 
-//	testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-//	testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
 	testImplementation("ch.qos.logback:logback-classic:1.4.6")
 
 }
