@@ -3,8 +3,6 @@ package com.github.nayasis.kotlin.jdbc.runner
 import com.github.nayasis.kotlin.basica.annotation.NoArg
 import com.github.nayasis.kotlin.basica.core.collection.toObject
 import com.github.nayasis.kotlin.jdbc.common.UserCommons
-import com.github.nayasis.kotlin.jdbc.common.UserCommons.Companion.createTable
-import com.github.nayasis.kotlin.jdbc.common.UserCommons.Companion.deleteAll
 import com.github.nayasis.kotlin.jdbc.query.toQuery
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -30,8 +28,8 @@ class QueryRunnerTest: StringSpec({
 
     "simple" {
 
-        createTable(connection)
-        deleteAll(connection)
+        UserCommons.createTable(connection)
+        UserCommons.deleteAll(connection)
 
         val sqlInsert = """
             INSERT INTO TB_USER (
@@ -111,14 +109,7 @@ class QueryRunnerTest: StringSpec({
 
     "key in multiple reference" {
 
-        """
-            CREATE TABLE IF NOT EXISTS TB_USER (
-                name  VARCHAR(10) PRIMARY KEY, 
-                age1  INT, 
-                age2  BIGINT, 
-                age3  DECIMAL
-            )
-        """.trimIndent().toQuery().runner(connection).execute()
+        UserCommons.createTable(connection)
 
         val sqlInsert = """
             INSERT INTO TB_USER (

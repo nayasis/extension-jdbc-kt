@@ -51,6 +51,16 @@ open class BatchQuery(
         return this
     }
 
+    fun addParams(vararg params: Any): BatchQuery {
+        params.forEach { addParam(it) }
+        return this
+    }
+
+    fun addParams(vararg params: Map<String,Any?>): BatchQuery {
+        params.forEach { addParam(it) }
+        return this
+    }
+
     fun reset(): BatchQuery {
         bindParams.clear()
         return this
