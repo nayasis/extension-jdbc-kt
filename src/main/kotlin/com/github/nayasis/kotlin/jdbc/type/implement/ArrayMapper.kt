@@ -1,11 +1,12 @@
 package com.github.nayasis.kotlin.jdbc.type.implement
 
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.jdbc.type.TypeMapper
 import java.sql.CallableStatement
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 
-class ArrayMapper: TypeMapper<List<*>> {
+object ArrayMapper: TypeMapper<List<*>> {
     override fun setParameter(statement: PreparedStatement, index: Int, param: List<*>) {
         val klass = param::class.java.componentType.kotlin
         val type = JdbcType.of(klass) ?: JdbcType.JAVA_OBJECT
@@ -17,21 +18,11 @@ class ArrayMapper: TypeMapper<List<*>> {
         }
     }
 
-    override fun setOutParameter(statement: CallableStatement, index: Int) {
-        statement.registerOutParameter(index, JdbcType.ARRAY.code)
-    }
+    override fun getResult(resultSet: ResultSet, columnIndex: Int): List<*>? =
+        extract(resultSet.getArray(columnIndex))
 
-    override fun getResult(resultSet: ResultSet, columnName: String): List<*>? {
-        return extract(resultSet.getArray(columnName))
-    }
-
-    override fun getResult(resultSet: ResultSet, columnIndex: Int): List<*>? {
-        return extract(resultSet.getArray(columnIndex))
-    }
-
-    override fun getResult(statement: CallableStatement, columnIndex: Int): List<*>? {
-        return extract(statement.getArray(columnIndex))
-    }
+    override fun getResult(statement: CallableStatement, columnIndex: Int): List<*>? =
+        extract(statement.getArray(columnIndex))
 
     private fun extract(array: java.sql.Array?): List<*>? {
         try {

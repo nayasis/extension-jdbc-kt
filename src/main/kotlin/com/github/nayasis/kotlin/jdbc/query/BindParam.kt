@@ -1,55 +1,64 @@
 package com.github.nayasis.kotlin.jdbc.query
 
-import JdbcType
-import com.github.nayasis.kotlin.basica.core.extention.ifNotEmpty
+import com.github.nayasis.kotlin.jdbc.type.JdbcType
 import com.github.nayasis.kotlin.basica.core.localdate.format
 import com.github.nayasis.kotlin.basica.core.localdate.toDate
 import com.github.nayasis.kotlin.basica.core.localdate.toLocalDate
 import com.github.nayasis.kotlin.basica.core.localdate.toLocalDateTime
+import com.github.nayasis.kotlin.basica.core.localdate.toLocalTime
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.OffsetTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Date
 
 class BindParam {
 
+    var key: String
+        private set
     var value: Any? = null
     var out: Boolean = false
     var jdbcType: JdbcType = JdbcType.VARCHAR
         set(type) {
             field = type
-            if(value == null) {
+            if(value == null && !out) {
                 field = JdbcType.NULL
                 return
             }
-            if( isString(value) ) {
+            if(value is StringBuffer || value is StringBuilder)
+                value = "$value"
+            if(value is String) {
                 when (jdbcType) {
-                    JdbcType.CHAR -> this.value = value.toString().firstOrNull()
-                    JdbcType.INTEGER -> this.value = value.toString().toInt()
-                    JdbcType.BOOLEAN -> this.value = value.toString().toBoolean()
-                    JdbcType.BIT -> this.value = value.toString().toBoolean()
-                    JdbcType.TINYINT -> this.value = value.toString().toByte()
-                    JdbcType.SMALLINT -> this.value = value.toString().toShort()
-                    JdbcType.FLOAT -> this.value = value.toString().toFloat()
-                    JdbcType.DOUBLE -> this.value = value.toString().toDouble()
-                    JdbcType.DATE -> this.value = value.toString().toLocalDate()
-                    JdbcType.DATETIME -> this.value = value.toString().toLocalDateTime()
-                    JdbcType.TIME -> this.value = value.toString().toDate("HH:MI:SS.FFF")
-                    JdbcType.TIMESTAMP -> this.value = value.toString().toDate("HH:MI:SS.FFF")
+                    JdbcType.CHAR      -> this.value = value.toString().firstOrNull()
+                    JdbcType.INTEGER   -> this.value = value.toString().toInt()
+                    JdbcType.BIGINT    -> this.value = value.toString().toBigInteger()
+                    JdbcType.BOOLEAN   -> this.value = value.toString().toBoolean()
+                    JdbcType.BIT       -> this.value = value.toString().toBoolean()
+                    JdbcType.TINYINT   -> this.value = value.toString().toByte()
+                    JdbcType.SMALLINT  -> this.value = value.toString().toShort()
+                    JdbcType.FLOAT     -> this.value = value.toString().toFloat()
+                    JdbcType.DOUBLE    -> this.value = value.toString().toDouble()
+                    JdbcType.NUMERIC   -> this.value = value.toString().toDouble()
+                    JdbcType.DECIMAL   -> this.value = value.toString().toBigDecimal()
+                    JdbcType.DATE      -> this.value = value.toString().toDate()
+                    JdbcType.DATETIME  -> this.value = value.toString().toLocalDateTime().let { it.withNano(0) }
+                    JdbcType.TIME      -> this.value = value.toString().toLocalTime()
+                    JdbcType.TIMESTAMP -> this.value = value.toString().toLocalDateTime()
                     else -> return
                 }
             }
         }
 
-    constructor(value: Any?, jdbcType: JdbcType = value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR, out: Boolean = false) {
-        this.value    = value
-        this.jdbcType = jdbcType
-        this.out      = out
+    constructor(struct: BindStruct) {
+        this.key = struct.key
+        this.out   = struct.out
+        this.jdbcType = struct.jdbcType ?: JdbcType.VARCHAR
     }
 
     constructor(value: Any?, struct: BindStruct) {
+        this.key = struct.key
         this.value = value
         this.out   = struct.out
         this.jdbcType = struct.jdbcType ?: value?.let{ JdbcType.of(it::class) } ?: JdbcType.VARCHAR

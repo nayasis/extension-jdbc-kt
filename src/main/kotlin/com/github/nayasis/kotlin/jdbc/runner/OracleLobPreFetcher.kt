@@ -1,4 +1,4 @@
-package com.github.nayasis.kotlin.jdbc.execution
+package com.github.nayasis.kotlin.jdbc.runner
 
 import oracle.jdbc.OracleStatement
 import java.sql.Statement

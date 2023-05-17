@@ -1,7 +1,5 @@
 package com.github.nayasis.kotlin.jdbc.query
 
-import JdbcType
-
 class QuotChecker {
 
     private var inQuot         = false
@@ -9,7 +7,7 @@ class QuotChecker {
     private var inBlockComment = false
     private var inLineComment  = false
 
-    fun read( c: Char, next: Char? = null ): QuotChecker {
+    fun read(c: Char, next: Char? = null): QuotChecker {
         when {
             inQuot         -> if(c == '\'') inQuot = false
             inDoubleQuot   -> if(c == '"') inDoubleQuot = false

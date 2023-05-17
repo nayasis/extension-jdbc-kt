@@ -6,24 +6,11 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.util.*
 
-class DateMapper: TypeMapper<Date> {
-    override fun setParameter(statement: PreparedStatement, index: Int, param: Date) {
+object DateMapper: TypeMapper<Date> {
+    override fun setParameter(statement: PreparedStatement, index: Int, param: Date) =
         statement.setDate(index, java.sql.Date(param.time))
-    }
-
-    override fun setOutParameter(statement: CallableStatement, index: Int) {
-        statement.registerOutParameter(index, JdbcType.DATE.code)
-    }
-
-    override fun getResult(resultSet: ResultSet, columnName: String): Date? {
-        return resultSet.getDate(columnName)
-    }
-
-    override fun getResult(resultSet: ResultSet, columnIndex: Int): Date? {
-        return resultSet.getDate(columnIndex)
-    }
-
-    override fun getResult(statement: CallableStatement, columnIndex: Int): Date? {
-        return statement.getDate(columnIndex)
-    }
+    override fun getResult(resultSet: ResultSet, columnIndex: Int): Date? =
+        resultSet.getDate(columnIndex)
+    override fun getResult(statement: CallableStatement, columnIndex: Int): Date? =
+        statement.getDate(columnIndex)
 }
