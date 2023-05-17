@@ -53,6 +53,9 @@ class QueryRunner(
                     val rs = param.jdbcType.mapper.getResult(statement,idx)
                     outs[param.key] = if(rs is ResultSet) toList(rs) else rs
                 }
+                statement.resultSet?.let {
+                    returns.add( toList(statement.resultSet) )
+                }
                 while(statement.moreResults) {
                     returns.add( toList(statement.resultSet) )
                 }

@@ -14,17 +14,20 @@ class BindStruct {
     constructor(s: String) {
         val words = s.split(":")
         when(words.size) {
-            0 -> {
-                key = ""
-            }
-            1 -> {
+            0 -> key = ""
+            1 -> key = words[0]
+            2 -> {
                 key = words[0]
-                out = (words.getOrNull(1) == "out")
+                if(words[1].equals("out",true)) {
+                    out = true
+                } else {
+                    jdbcType = JdbcType.of(words[1])
+                }
             }
             else -> {
-                key = words[0]
-                jdbcType = words.getOrNull(1)?.let { JdbcType.of(it) }
-                out = (words.getOrNull(2) == "out")
+                key      = words[0]
+                jdbcType = JdbcType.of(words[1])
+                out      = words[2].equals("out",true)
             }
         }
 

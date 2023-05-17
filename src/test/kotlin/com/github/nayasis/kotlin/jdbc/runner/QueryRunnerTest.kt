@@ -109,6 +109,15 @@ class QueryRunnerTest: StringSpec({
 
     "key in multiple reference" {
 
+        """
+            CREATE TABLE IF NOT EXISTS TB_USER (
+                name VARCHAR(10) PRIMARY KEY, 
+                age1  INT, 
+                age2  BIGINT, 
+                age3  NUMERIC(20,2)
+            )
+        """.trimIndent().toQuery().runner(connection).execute()
+
         UserCommons.createTable(connection)
 
         val sqlInsert = """
@@ -129,9 +138,9 @@ class QueryRunnerTest: StringSpec({
 
         res.size shouldBe 9
 
-        res.sumOf { it.age1 ?: 0 } shouldBe 25
+        res.sumOf { it.age1 ?: 0 } shouldBe 20
         res.sumOf { it.age2 ?: 0 } shouldBe 25L
-        res.sumOf { it.age3 ?: BigDecimal.ZERO } shouldBe BigDecimal.valueOf( 25)
+        res.sumOf { it.age3 ?: BigDecimal.ZERO } shouldBe BigDecimal.valueOf( 22.5)
 
         res.first().name shouldBe "0.5"
         res.last().name shouldBe "4.5"

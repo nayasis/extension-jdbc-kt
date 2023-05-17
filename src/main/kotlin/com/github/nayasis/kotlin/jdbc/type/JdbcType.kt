@@ -67,12 +67,17 @@ enum class JdbcType(
     TEXT                    ( Int.MIN_VALUE + 5       , StringMapper               ) ,
     LONGTEXT                ( Int.MIN_VALUE + 6       , ClobMapper                 ) ,
     UNDEFINED               ( Int.MIN_VALUE + 0       , UndefinedMapper            ) ,
-
     ;
 
     companion object {
 
-        private val typeByName = values().associateBy { it.name }
+        private val typeByName = values().associateBy { it.name }.toMutableMap().apply {
+            // add alias
+            put("INT", INTEGER)
+            put("LONG", BIGINT)
+            put("NUMBER", NUMERIC)
+            put("STRING", VARCHAR)
+        }
         private val typeByCode = values().associateBy { it.code }
         private val typeByClass = mapOf(
             String::class to VARCHAR,

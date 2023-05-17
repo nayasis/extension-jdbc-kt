@@ -23,7 +23,7 @@ class BindParam {
     var jdbcType: JdbcType = JdbcType.VARCHAR
         set(type) {
             field = type
-            if(value == null) {
+            if(value == null && !out) {
                 field = JdbcType.NULL
                 return
             }
