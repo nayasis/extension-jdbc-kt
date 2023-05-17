@@ -44,14 +44,11 @@ repositories {
 	mavenCentral()
 	jcenter()
 	maven { url = uri("https://jitpack.io") }
-//	maven { url  = uri("http://repo.spring.io/plugins-release") }
 }
 
 dependencies {
 
 	implementation("com.github.nayasis:basica-kt:0.2.22")
-//	implementation("com.github.nayasis:basica-kt:develop-SNAPSHOT"){ isChanging = true }
-//	implementation("com.github.nayasis:basica-kt:0.2.21-SNAPSHOT"){ isChanging = true }
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
@@ -62,7 +59,7 @@ dependencies {
 
 	testImplementation("io.kotest:kotest-runner-junit5:5.6.1")
 	testImplementation("io.kotest:kotest-assertions-core:5.6.1")
-	testImplementation("com.h2database:h2:2.1.212")
+	testImplementation("com.h2database:h2:2.1.214")
 
 	testImplementation("ch.qos.logback:logback-classic:1.4.6")
 
