@@ -52,7 +52,7 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 	implementation("io.github.microutils:kotlin-logging:3.0.5")
 	implementation("au.com.console:kassava:2.1.0")
 	compileOnly("com.oracle.database.jdbc:ojdbc6:11.2.0.4")
